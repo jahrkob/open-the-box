@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Open The Box</title>
+  <style>
+    :root{
+      --bg:#0f1220; /* deep space */
+      --panel:#171a2d;
+      --panel-2:#1e2240;
+      --accent:#7c9cff;
+      --good:#30d158;
+      --warn:#ffd166;
+      --bad:#ff6961;
+      --text:#e6e9ff;
+      --muted:#aab0d6;
+      --shadow:0 10px 30px rgba(0,0,0,.45);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    html,body{
+      margin:0;
+      font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Inter, system-ui, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background: var(--bg);
+      position: relative;
+      overflow-x: hidden;
+    }
+    body::before{
+      content:"";
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(1200px 600px at 85% -20%, rgba(124,156,255,.15), transparent 60%),
+        radial-gradient(800px 400px at -10% 110%, rgba(48,209,88,.12), transparent 60%);
+      pointer-events:none;
+      z-index:-1;
+    }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Inter, system-ui, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 85% -20%, rgba(124,156,255,.15), transparent 60%),
+        radial-gradient(800px 400px at -10% 110%, rgba(48,209,88,.12), transparent 60%),
+        var(--bg);
+    }
+    a{color:var(--accent)}
+    .app{
+      max-width:1100px;
+      margin:0 auto;
+      padding:24px;
+      display:grid;
+      gap:24px;
+      grid-template-columns: 1fr;
+    }
+    @media(min-width:960px){
+      .app{grid-template-columns: 1.1fr .9fr}
+    }
+    header{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+    }
+    h1{font-size:clamp(24px,3vw,36px); margin:0; letter-spacing:.5px}
+    .sub{color:var(--muted); font-size:14px}
+    .actions{display:flex; gap:10px; align-items:center}
+    button, .btn{
+      background: linear-gradient(180deg, var(--accent), #5e7cff);
+      color:white; border:none; padding:10px 14px; border-radius:12px; font-weight:700; cursor:pointer;
+      box-shadow: var(--shadow);
+    }
+    button.ghost{
+      background:transparent; border:1px solid #2c315c; color:var(--text)
+    }
+    .grid{display:grid; gap:16px}
+    .card{
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:var(--radius);
+      padding:18px;
+      box-shadow:var(--shadow);
+    }
+
+    /* LOCK / BOX PANEL */
+    .lock-area{position:relative}
+    .lock-panel{display:flex; flex-direction:column; gap:16px}
+    .lock{display:flex; align-items:center; gap:10px}
+    .digit{
+      width:58px; height:72px; border-radius:12px; background:#0a0d1a; border:1px solid #2c315c; display:grid; place-items:center;
+      font-size:42px; letter-spacing:2px; font-weight:800; color:#6f78a5; text-shadow:0 0 12px rgba(124,156,255,.35);
+    }
+    .digit.solved{ color:#d7e1ff; border-color:#5c67a5; background:linear-gradient(180deg,#0c1022,#151a37) }
+    .progress{height:8px; background:#0c1022; border:1px solid #2c315c; border-radius:999px; overflow:hidden}
+    .bar{height:100%; width:0; background:linear-gradient(90deg, var(--good), #3ab5ff, var(--accent)); transition:width .6s}
+    .open-btn{font-size:16px; padding:12px 16px; filter:saturate(.9); opacity:.7}
+    .open-btn.ready{opacity:1; filter:none}
+
+    .box-scene{ perspective: 900px; display:grid; place-items:center; padding:12px; }
+    .box{
+      width: 260px; height: 160px; position: relative; transform-style: preserve-3d; transition: transform 1s ease;
+    }
+    .lid, .base{position:absolute; inset:0; border-radius:14px; backface-visibility:hidden; will-change: transform;}
+    .lid{transform-origin: top center; transform: rotateX(0deg) translateZ(30px); transition: transform 1s ease;}
+    .base{transform: translateZ(-30px)}
+    .face{position:absolute; inset:0; background:linear-gradient(180deg,#15203e,#0c1328); border:1px solid #2f3a6a; border-radius:14px}
+    .lock-band{position:absolute; left:50%; transform:translateX(-50%); width:80px; height:26px; top:-12px; background:#090f22; border:1px solid #2c315c; border-radius:8px; display:grid; place-items:center; font-weight:800; letter-spacing:1px; color:#93a0ff}
+    .box.open .lid{ transform: rotateX(-120deg) translateZ(30px) }
+
+    /* PUZZLES */
+    .puzzles{display:grid; gap:16px}
+    .puzzle{display:grid; gap:12px}
+    .puzzle h3{margin:0 0 2px 0}
+    .hint{font-size:13px; color:var(--muted)}
+    .badge{display:inline-flex; align-items:center; gap:8px; font-size:12px; background:#0c1022; border:1px solid #2c315c; padding:4px 8px; border-radius:999px; color:#9fb3ff}
+    .solvedflag{color:var(--good); font-weight:700}
+    .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+    .input{background:#0a0f23; border:1px solid #2c315c; padding:10px 12px; border-radius:10px; color:var(--text)}
+    .kbd{background:#0c1022; border:1px solid #2c315c; padding:2px 6px; border-radius:6px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+
+    /* Puzzle specifics */
+    .slider input{width:160px}
+    .color-samples{display:flex; gap:12px; align-items:center}
+    .swatch{width:48px; height:48px; border-radius:10px; border:1px solid #2c315c}
+
+    .cipher-area{display:flex; flex-direction:column; gap:10px}
+    .cipher-text{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#0a0f23; border:1px dashed #334; padding:10px; border-radius:10px}
+
+    .slots{display:flex; gap:8px;}
+    .slot, .tile{ width:56px; height:56px; display:grid; place-items:center; border-radius:12px; font-weight:900; letter-spacing:1px }
+    .slot{ border:1px dashed #2c315c; color:#6370a6; background:#0a0f23 }
+    .tile{ border:1px solid #2c315c; background:#0e1330; cursor:grab }
+
+    .terminal{ background:#060a18; border:1px solid #263058; border-radius:12px; padding:12px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .term-log{ height:140px; overflow:auto; white-space:pre-wrap; }
+    .term-input{ width:100%; background:transparent; border:none; color:#a8c1ff; outline:none }
+
+    .footer{color:#7280b9; font-size:12px}
+
+    /* Confetti */
+    .confetti{position:fixed; inset:0; pointer-events:none; overflow:hidden}
+    .confetti span{ position:absolute; top:-10px; width:10px; height:14px; background: hsl(var(--h, 200), 80%, 60%); transform:translateY(-120px) rotate(0); animation: fall var(--dur,4s) linear forwards; border-radius:2px }
+    @keyframes fall{ to { transform: translateY(120vh) rotate(720deg) } }
+      /* Responsive sizing */
+    .app{ padding: clamp(16px, 3vw, 24px); }
+    header{ flex-wrap: wrap; }
+    .row{ flex-wrap: wrap; }
+    .digit{ width:clamp(44px,8vw,58px); height:clamp(54px,10vw,72px); font-size:clamp(28px,6vw,42px); }
+    .open-btn{ font-size:clamp(14px,2.6vw,16px); }
+    .box{ width:clamp(200px,40vw,320px); height:clamp(120px,24vw,200px); }
+    .slot, .tile{ width:clamp(44px,10vw,56px); height:clamp(44px,10vw,56px); }
+    .term-log{ height:clamp(120px,24vh,180px); }
+    .app > *{ min-width:0; }
+
+    @media(max-width:640px){
+      .actions{ width:100%; justify-content:flex-end }
+      .lock{ gap:8px }
+    }
+
+    /* Surprise overlay */
+    .overlay{ position:fixed; inset:0; display:none; place-items:center; background:rgba(10,14,30,.55); backdrop-filter: blur(6px); z-index:50; padding:20px }
+    .overlay.show{ display:grid }
+    .overlay .panel{ max-width:min(520px, 92vw); background:linear-gradient(180deg, #11162c, #0b1024); border:1px solid #2b3160; border-radius:18px; padding:18px; box-shadow:var(--shadow); text-align:center }
+    .prize{ font-size:clamp(18px,3.2vw,22px); color:#cfe0ff; margin-top:8px }
+    .code{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#0b1022; border:1px solid #2c315c; padding:6px 8px; border-radius:8px; display:inline-block; margin-top:8px }
+    .close-btn{ margin-top:12px }
+
+    /* Floating key surprise */
+    .float-key{ position:absolute; font-size:clamp(24px, 6vw, 48px); opacity:0; transform:translateY(0); animation: keyUp 1.8s ease-out forwards }
+    @keyframes keyUp{ 10%{opacity:1} 100%{ transform: translateY(-160px); opacity:0 } }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce){
+      *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:0ms !important }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Open The Box</h1>
+        <div class="sub">A tiny escape-room in your browser. Solve the mini‑puzzles to reveal all four digits and pop the lid.</div>
+      </div>
+      <div class="actions">
+        <button class="ghost" id="resetBtn" title="Reset progress">Reset</button>
+        <button class="ghost" id="hintToggle">Hints ▾</button>
+      </div>
+    </header>
+
+    <section class="card lock-area">
+      <div class="lock-panel">
+        <div class="row" aria-live="polite">
+          <div class="digit" id="d1">?</div>
+          <div class="digit" id="d2">?</div>
+          <div class="digit" id="d3">?</div>
+          <div class="digit" id="d4">?</div>
+          <button class="open-btn" id="openBtn" disabled>Open the box</button>
+        </div>
+        <div class="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
+        <div class="box-scene">
+          <div class="box" id="box">
+            <div class="lid">
+              <div class="face"></div>
+              <div class="lock-band">LOCK</div>
+            </div>
+            <div class="base">
+              <div class="face"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="puzzles">
+      <div class="card puzzle" id="puzzle1" data-digit="1" data-value="2">
+        <div class="row" style="justify-content:space-between">
+          <h3>🧮 Shift the message</h3>
+          <span class="badge" aria-live="polite"><span id="p1status">unsolved</span></span>
+        </div>
+        <div class="cipher-area">
+          <div class="cipher-text" id="cipher">WKH ILUVW GLJLW LV 2</div>
+          <label>Shift: <span id="shiftVal">0</span></label>
+          <input type="range" id="shift" min="0" max="25" value="0" />
+          <div class="hint" data-hint>Hint: It's a Caesar shift. When the sentence looks normal, you'll have your digit.</div>
+        </div>
+      </div>
+
+      <div class="card puzzle" id="puzzle2" data-digit="2" data-value="5">
+        <div class="row" style="justify-content:space-between">
+          <h3>🔤 Arrange the tiles</h3>
+          <div class="row">
+            <span class="badge"><span id="p2status">unsolved</span></span>
+            <button class="ghost" id="tilesReset" title="Reset tiles">Reset</button>
+          </div>
+        </div>
+        <div class="hint" data-hint>Hint: Arrange to spell what you want to do to the box.</div>
+        <div class="row">
+          <div class="slots" id="slots" aria-label="target slots"></div>
+        </div>
+        <div class="row" id="tiles" aria-label="tiles to drag"></div>
+      </div>
+
+      <div class="card puzzle" id="puzzle3" data-digit="3" data-value="9">
+        <div class="row" style="justify-content:space-between">
+          <h3>🧩 Riddle me this</h3>
+          <span class="badge"><span id="p3status">unsolved</span></span>
+        </div>
+        <div class="hint" data-hint>Hint: You are using one right now.</div>
+        <label for="riddleInput" class="hint">Answer the riddle:</label>
+        <div class="cipher-text">What has many keys but can’t open a single lock?</div>
+        <div class="row">
+          <input id="riddleInput" class="input" placeholder="type your answer..." />
+          <button id="riddleBtn">Submit</button>
+        </div>
+      </div>
+        <div class="card puzzle" id="puzzle4" data-digit="4" data-value="7">
+        <div class="row" style="justify-content:space-between">
+          <h3>⌨️ Mini terminal</h3>
+          <span class="badge"><span id="p4status">unsolved</span></span>
+        </div>
+        <div class="terminal" role="group" aria-label="terminal">
+          <div class="term-log" id="termLog" aria-live="polite"></div>
+          <div class="row">
+            <span class="kbd">›</span>
+            <input class="term-input" id="termInput" placeholder="type a command (try 'help')" autocomplete="off" />
+          </div>
+        </div>
+        <div class="hint" data-hint>Hint: The command you need rhymes with "plan".</div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      Pro tip: toggle <span class="kbd">Hints</span> if you get stuck. Your progress is saved locally.
+    </footer>
+  </div>
+
+  <div class="confetti" id="confetti"></div>
+  <div class="overlay" id="surprise">
+    <div class="panel">
+      <h2 style="margin:0 0 6px 0">🎉 The Box is Open!</h2>
+      <div class="prize">You found a <strong>Golden Key</strong> and unlocked <em>Bonus Mode</em>.</div>
+      <div class="prize">Your lucky code: <span class="code" id="prizeCode">BOX-0000</span></div>
+      <div class="hint" style="margin-top:6px">(Keep this code for bragging rights.)</div>
+      <button class="close-btn" id="closeSurprise">Nice!</button>
+    </div>
+  </div>
+
+  <script>
+    // --- tiny helpers
+    const $ = (sel, el=document) => el.querySelector(sel);
+    const $$ = (sel, el=document) => [...el.querySelectorAll(sel)];
+
+    const state = {
+      digits: [null,null,null,null], // 1..4
+      solved: {1:false,2:false,3:false,4:false},
+      targetColor: {r: 46, g: 160, b: 240},
+    };
+
+    const save = () => localStorage.setItem('otb-state', JSON.stringify(state));
+    const load = () => {
+      try{ Object.assign(state, JSON.parse(localStorage.getItem('otb-state'))||{});}catch(e){}
+    };
+
+    function updateUI(){
+      // digits panel
+      state.digits.forEach((d, i)=>{
+        const el = document.getElementById('d'+(i+1));
+        if(d!=null){ el.textContent = d; el.classList.add('solved') } else { el.textContent='?'; el.classList.remove('solved') }
+      });
+      // progress bar
+      const solvedCount = state.digits.filter(x=>x!=null).length;
+      $('#bar').style.width = (solvedCount/4*100)+'%';
+      // open button
+      const ready = solvedCount===4;
+      const btn = $('#openBtn');
+      btn.disabled = !ready; btn.classList.toggle('ready', ready);
+      // statuses
+      $('#p1status').textContent = state.solved[1]?'solved ✓':'unsolved';
+      $('#p2status').textContent = state.solved[2]?'solved ✓':'unsolved';
+      $('#p3status').textContent = state.solved[3]?'solved ✓':'unsolved';
+      $('#p4status').textContent = state.solved[4]?'solved ✓':'unsolved';
+    }
+
+    function markSolved(puzzleEl){
+      const idx = +puzzleEl.dataset.digit; // 1..4
+      const val = +puzzleEl.dataset.value;
+      if(!state.solved[idx]){
+        state.solved[idx] = true;
+        state.digits[idx-1] = val;
+        save();
+        updateUI();
+        pulse(puzzleEl);
+        announce(`Digit ${idx} revealed: ${val}`);
+      }
+    }
+
+    function pulse(el){
+      el.animate([{transform:'scale(1)'},{transform:'scale(1.02)'},{transform:'scale(1)'}],{duration:400});
+    }
+
+    function announce(msg){
+      const live = document.createElement('div');
+      live.setAttribute('aria-live','polite');
+      live.textContent = msg; live.style.position='absolute'; live.style.left='-9999px';
+      document.body.appendChild(live); setTimeout(()=>document.body.removeChild(live), 500);
+    }
+
+    function confetti(){
+      const wrap = $('#confetti');
+      wrap.innerHTML = '';
+      const N = 120;
+      for(let i=0;i<N;i++){
+        const s = document.createElement('span');
+        s.style.left = (Math.random()*100)+'vw';
+        s.style.setProperty('--h', Math.floor(Math.random()*360));
+        s.style.setProperty('--dur', (3+Math.random()*2)+'s');
+        wrap.appendChild(s);
+      }
+      setTimeout(()=>wrap.innerHTML='', 5500);
+    }
+
+    // --- Box open
+    $('#openBtn').addEventListener('click', ()=>{
+      if(state.digits.every(d=>d!=null)){
+        $('#box').classList.add('open');
+        $('.lock-band').textContent = 'OPEN';
+        confetti();
+        surprise();
+      }
+    });
+
+    function playChime(){
+      try{
+        const ctx = new (window.AudioContext||window.webkitAudioContext)();
+        const g = ctx.createGain(); g.gain.value = 0.06; g.connect(ctx.destination);
+        const notes = [523.25,659.25,783.99,1046.5]; // C5 E5 G5 C6
+        let t = ctx.currentTime;
+        notes.forEach((f,i)=>{
+          const o = ctx.createOscillator(); o.type='sine'; o.frequency.value = f; o.connect(g);
+          const d = 0.14; o.start(t+i*(d-0.02)); o.stop(t+i*(d-0.02)+d);
+        });
+        setTimeout(()=>ctx.close(),800);
+      }catch(e){}
+    }
+    function surprise(){
+      const scene = document.querySelector('.box-scene');
+      const key = document.createElement('div'); key.className='float-key'; key.textContent='🔑';
+      key.style.left = 'calc(50% - 12px)'; key.style.bottom = '60px'; key.style.position='absolute';
+      scene.appendChild(key); setTimeout(()=>key.remove(), 2000);
+      const code = 'BOX-' + Math.random().toString(36).slice(2,6).toUpperCase() + '-' + new Date().getFullYear();
+      document.getElementById('prizeCode').textContent = code;
+      document.getElementById('surprise').classList.add('show');
+      playChime();
+    }
+    document.addEventListener('click', (e)=>{
+      if(e.target && (e.target.id==='closeSurprise' || e.target.id==='surprise')){
+        document.getElementById('surprise').classList.remove('show');
+      }
+    });
+
+    // --- Reset
+    $('#resetBtn').addEventListener('click', ()=>{
+      if(confirm('Reset all progress and re-lock the box?')){
+        localStorage.removeItem('otb-state');
+        state.digits=[null,null,null,null]; state.solved={1:false,2:false,3:false,4:false};
+        $('#box').classList.remove('open'); $('.lock-band').textContent = 'LOCK';
+        updateUI();
+      }
+    });
+
+    // --- Hints toggle
+    const hintBtn = $('#hintToggle');
+    let hintsOn = false;
+    const setHints = (on)=>{
+      hintsOn = on; hintBtn.textContent = on? 'Hints ▴':'Hints ▾';
+      $$('[data-hint]').forEach(el=> el.style.display = on? 'block':'none');
+    };
+    hintBtn.addEventListener('click', ()=> setHints(!hintsOn));
+    setHints(false);
+
+    // --- Puzzle 1: Caesar shift
+    const CIPHER_ORIG = 'WKH ILUVW GLJLW LV 2';
+    const cipherEl = $('#cipher');
+    const shiftRange = $('#shift');
+    const shiftVal = $('#shiftVal');
+    function caesar(s, k){
+      const A='A'.charCodeAt(0), Z='Z'.charCodeAt(0), a='a'.charCodeAt(0), z='z'.charCodeAt(0);
+      return s.split('').map(ch=>{
+        let c=ch.charCodeAt(0);
+        if(c>=A&&c<=Z) return String.fromCharCode(((c-A-k+260)%26)+A);
+        if(c>=a&&c<=z) return String.fromCharCode(((c-a-k+260)%26)+a);
+        return ch;
+      }).join('');
+    }
+    shiftRange.addEventListener('input', e=>{
+      const k = +e.target.value; shiftVal.textContent = k;
+      cipherEl.textContent = caesar(CIPHER_ORIG, k);
+      if(cipherEl.textContent.trim() === 'THE FIRST DIGIT IS 2'){
+        markSolved($('#puzzle1'));
+      }
+    });
+
+    // --- Puzzle 2: Arrange tiles to OPEN
+    const word = 'OPEN';
+    const tilesWrap = $('#tiles');
+    const slotsWrap = $('#slots');
+
+    function setupTiles(){
+      slotsWrap.innerHTML = ''; tilesWrap.innerHTML = '';
+      // create 4 slots
+      for(let i=0;i<4;i++){
+        const slot = document.createElement('div');
+        slot.className='slot'; slot.dataset.index=(i+1);
+        slot.textContent = (i+1);
+        slot.addEventListener('dragover', e=>{ e.preventDefault(); });
+        slot.addEventListener('drop', e=>{
+          e.preventDefault();
+          const id = e.dataTransfer.getData('text/plain');
+          const tile = document.getElementById(id);
+          if(!tile) return;
+          // if this slot already has a tile, send it back to the tray
+          if(slot.firstElementChild && slot.firstElementChild !== tile){
+            tilesWrap.appendChild(slot.firstElementChild);
+          }
+          slot.textContent='';
+          slot.appendChild(tile);
+          checkSlots();
+        });
+        slotsWrap.appendChild(slot);
+      }
+      // shuffled tiles
+      const letters = word.split('');
+      letters.sort(()=>Math.random()-.5);
+      letters.forEach((ch,i)=>{
+        const t = document.createElement('div');
+        t.className='tile'; t.id='tile'+i; t.textContent=ch;
+        t.setAttribute('draggable','true');
+        t.addEventListener('dragstart', e=>{ e.dataTransfer.setData('text/plain', t.id); });
+        tilesWrap.appendChild(t);
+      });
+    }
+
+    // allow dropping tiles back to the tray (to reset/move out of a slot)
+    tilesWrap.addEventListener('dragover', e=>{ e.preventDefault(); });
+    tilesWrap.addEventListener('drop', e=>{
+      e.preventDefault();
+      const id = e.dataTransfer.getData('text/plain');
+      const tile = document.getElementById(id);
+      if(!tile) return;
+      const parent = tile.parentElement;
+      tilesWrap.appendChild(tile);
+      if(parent && parent.classList.contains('slot')){
+        parent.textContent = parent.dataset.index;
+      }
+      checkSlots();
+    });
+
+    function checkSlots(){
+      const placed = $$('.slot').map(s=> s.firstElementChild? s.firstElementChild.textContent : '_').join('');
+      if(placed === word){ markSolved($('#puzzle2')); }
+    }
+
+    // reset button
+    document.addEventListener('click', (e)=>{
+      if(e.target && e.target.id === 'tilesReset'){
+        setupTiles();
+      }
+    });
+
+    // --- Puzzle 3: Riddle
+    const p3El = document.getElementById('puzzle3');
+    const p3input = document.getElementById('riddleInput');
+    const p3btn = document.getElementById('riddleBtn');
+    const p3answers = ['keyboard','a keyboard','the keyboard'];
+
+    function checkRiddle(){
+      const val = (p3input.value||'').trim().toLowerCase();
+      if(p3answers.includes(val)){
+        markSolved(p3El);
+        p3btn.disabled = true; p3input.disabled = true;
+        announce('Correct — digit 3 revealed.');
+      } else {
+        pulse(p3El);
+        announce('Not quite. Try again.');
+      }
+    }
+    function p3Init(){
+      if(state.solved && state.solved[3]){ p3btn.disabled = true; p3input.disabled = true; }
+    }
+    if(p3btn){
+      p3btn.addEventListener('click', checkRiddle);
+      p3input.addEventListener('keydown', e=>{ if(e.key==='Enter') checkRiddle(); });
+    }
+
+    // --- Puzzle 4: Mini terminal
+    const termLog = $('#termLog');
+    const termInput = $('#termInput');
+
+    function log(line=''){
+      termLog.textContent += (line + '\n');
+      termLog.scrollTop = termLog.scrollHeight;
+    }
+    const commands = {
+      help(){
+        log('Available: help, scan, echo <text>, clear, about');
+      },
+      about(){
+        log('Open The Box — a tiny single-file escape. Find four digits.');
+      },
+      echo(...rest){ log(rest.join(' ')); },
+      clear(){ termLog.textContent=''; },
+      scan(){
+        log('Scanning box... █████  done.');
+        log('FOURTH DIGIT: 7');
+        markSolved($('#puzzle4'));
+      }
+    };
+    termInput.addEventListener('keydown', e=>{
+      if(e.key==='Enter'){
+        const raw = termInput.value.trim();
+        if(!raw) return; log('> '+raw);
+        const [cmd, ...rest] = raw.split(/\s+/);
+        (commands[cmd]||(()=>log('Unknown command. Try "help".')))(...rest);
+        termInput.value='';
+      }
+    });
+
+    // --- init
+    load();
+    setupTiles();
+    p3Init(); // initialize puzzle 3 (riddle)
+    shiftRange.dispatchEvent(new Event('input'));
+    updateUI();
+
+    // If box was already open, reflect it
+    if(state.digits.every(d=>d!=null)){
+      $('#box').classList.add('open');
+      $('.lock-band').textContent = 'OPEN';
+    }
+  </script>
+</body>
+</html>
